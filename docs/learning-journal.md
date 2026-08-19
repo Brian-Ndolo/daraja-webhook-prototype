@@ -2,6 +2,20 @@ Entry 1 — Initial Server Failure
 
 
 
+Date: 18 August 2026
+
+Start time: \[18:00]
+
+End time: \[20:00]
+
+Duration: \[2hrs]
+
+
+
+
+
+
+
 Objective:
 
 Build a small webhook prototype using Node.js/Express to understand how a webhook receives external POST requests.
@@ -98,7 +112,21 @@ I learned that a Node.js process will immediately exit when there is no active a
 
 
 
+
+
 Entry 2 — Testing POST Requests
+
+
+
+Date: 18 August 2026
+
+Start time: \[23:00]
+
+End time: \[00:30]
+
+Duration: \[1.5hrs]
+
+
 
 
 
@@ -154,7 +182,19 @@ I learned the difference between curl's -x proxy option and -X request-method op
 
 
 
+
+
 Entry 3 — Building the Webhook Endpoint
+
+
+
+Date: 19 August 2026
+
+Start time: \[02:00]
+
+End time: \[Not Recorded]
+
+Duration: \[Not Recorded]
 
 
 
@@ -246,7 +286,19 @@ The server also logged the received JSON.
 
 
 
+
+
 Entry 4 — Daraja-Style Callback Test
+
+
+
+Date: 19 August 2026
+
+Start time: \[Not Recorded]
+
+End time: \[Not Recorded]
+
+Duration: \[Not Recorded]
 
 
 
@@ -350,17 +402,57 @@ Return acknowledgement
 
 
 
-Still to investigate:
+
+
+Entry 5 — Webhook Verification Investigation
 
 
 
-Public webhook URL
+Date: 19 August 2026
 
-HTTPS
+Start time: 08:30 EAT
 
-Actual Daraja integration
+End time: 09:50 EAT
 
-Webhook security/validation
+Duration: 1hr 20 minutes
 
-Handling real transaction data
+
+
+
+
+
+
+Objective:
+
+
+
+Understand how a webhook receiver can determine whether an incoming request is legitimate.
+
+
+
+Investigation:
+
+
+
+I researched webhook signatures, shared secrets, HMAC, and timestamps.
+
+
+
+Learning:
+
+
+
+I learned that the sender and receiver can share a secret that is not exposed directly in the request. The sender uses the secret and request data to generate a signature. The receiver uses its own copy of the secret to independently calculate the expected signature and compares it with the received signature.
+
+
+
+I also learned that timestamps can be used to check whether a request is recent and help protect against replay attacks.
+
+
+
+Key realization:
+
+
+
+A webhook endpoint that accepts every POST request without verification cannot determine whether the request actually came from the expected sender.
 
