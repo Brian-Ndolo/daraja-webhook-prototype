@@ -435,3 +435,334 @@ Key realization:
 
 A webhook endpoint that accepts every POST request without verification cannot determine whether the request actually came from the expected sender.
 
+## Entry 6 — HMAC Webhook Verification Implementation
+
+Date: 19 August 2026
+
+Start time: 11: 30 am
+
+End time:  unrecorded
+
+Duration: unrecorded
+
+### Objective
+
+Implement a learning prototype for webhook signature verification using HMAC-SHA256.
+
+The goal was to change the webhook flow from:
+
+```text
+Request
+↓
+express.json()
+↓
+req.body
+↓
+/webhook
+↓
+Accepted
+```
+
+to:
+
+```text
+Request
+↓
+Capture raw body
+↓
+Read signature
+↓
+Calculate expected HMAC
+↓
+Compare signatures
+↓
+Valid → HTTP 200
+Invalid/missing → HTTP 401
+```
+
+This was intentionally a learning prototype and not a production implementation of Safaricom/Daraja authentication.
+
+### Research
+
+I researched the purpose of webhook signatures and how a webhook receiver can determine whether an incoming request is legitimate.
+
+Key concepts investigated:
+
+* Shared secrets
+* HMAC
+* HMAC-SHA256
+* Request signatures
+* Raw request bodies
+* Signature comparison
+* Replay attacks and timestamps
+
+The main concept I learned was that the sender and receiver can share a secret that is not exposed directly in the request.
+
+The sender uses:
+
+```text
+Request body + shared secret
+↓
+HMAC-SHA256
+↓
+Signature
+```
+
+The receiver independently performs the same calculation and compares the generated signature with the signature received in the request.
+
+### Initial Blocker
+
+The existing webhook endpoint accepted JSON requests and returned HTTP 200 without checking whether the request contained any authentication or verification information.
+
+The existing flow was effectively:
+
+```text
+POST /webhook
+↓
+Parse JSON
+↓
+Log req.body
+↓
+Return HTTP 200
+```
+
+This meant that any client capable of reaching the endpoint could potentially send a request that would be treated as accepted.
+
+### Solution
+
+I introduced HMAC-SHA256 signature verification using Node.js's built-in `crypto` module.
+
+No additional npm package was required.
+
+A local shared secret was defined for the experiment:
+
+```js
+const SHARED_SECRET = "my-learning-secret";
+```
+
+The JSON parser was modified to preserve the raw request body using Express's `verify` option:
+
+```js
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
+```
+
+This was important because the HMAC needed to be calculated from the original request body.
+
+### Implementation
+
+Node's built-in crypto module was imported:
+
+```js
+const crypto = require("crypto");
+```
+
+The webhook endpoint then read the incoming signature:
+
+```js
+const receivedSignature = req.headers["x-signature"];
+```
+
+The server calculated the expected HMAC-SHA256 signature:
+
+```js
+const expectedSignature = crypto
+  .createHmac("sha256", SHARED_SECRET)
+  .update(req.rawBody)
+  .digest("hex");
+```
+
+The received signature was then compared with the expected signature.
+
+Invalid or missing signatures were rejected:
+
+```js
+if (!receivedSignature || receivedSignature !== expectedSignature) {
+  return res.status(401).json({
+    ResultCode: 1,
+    ResultDesc: "Invalid signature"
+  });
+}
+```
+
+Valid signatures continued through the existing webhook logic:
+
+```js
+console.log("Webhook received:");
+console.log(JSON.stringify(req.body, null, 2));
+
+res.status(200).json({
+  ResultCode: 0,
+  ResultDesc: "Accepted"
+});
+```
+
+### Troubleshooting During Testing
+
+#### Blocker 1 — Invalid JSON test payload
+
+The first test request contained:
+
+```json
+{"TransactionID":"TEST123",Amount":100}
+```
+
+The `Amount` property was missing quotation marks.
+
+The server correctly returned:
+
+```text
+HTTP/1.1 400 Bad Request
+```
+
+with a JSON parsing error.
+
+I corrected the payload to:
+
+```json
+{"TransactionID":"TEST123","Amount":100}
+```
+
+This allowed the request to reach the HMAC verification logic.
+
+#### Blocker 2 — Incorrect shared secret
+
+When generating a test HMAC, I accidentally used:
+
+```text
+my-laerning-secret
+```
+
+instead of:
+
+```text
+my-learning-secret
+```
+
+This produced a different HMAC signature.
+
+I learned that HMAC verification is extremely sensitive to changes in both the secret and request body. A single character difference produces a different signature.
+
+I corrected the secret and generated the signature again.
+
+### Test 1 — Missing Signature
+
+I sent a valid JSON POST request without an `x-signature` header.
+
+The request body was:
+
+```json
+{
+  "TransactionID": "TEST123",
+  "Amount": 100
+}
+```
+
+The server returned:
+
+```text
+HTTP/1.1 401 Unauthorized
+```
+
+Response:
+
+```json
+{
+  "ResultCode": 1,
+  "ResultDesc": "Invalid signature"
+}
+```
+
+This confirmed that unsigned requests were rejected.
+
+### Test 2 — Valid HMAC Signature
+
+I generated an HMAC-SHA256 signature using:
+
+```text
+Secret:
+my-learning-secret
+```
+
+and the exact request body:
+
+```json
+{"TransactionID":"TEST123","Amount":100}
+```
+
+I then sent the generated signature using the:
+
+```text
+x-signature
+```
+
+request header.
+
+The server returned:
+
+```text
+HTTP/1.1 200 OK
+```
+
+Response:
+
+```json
+{
+  "ResultCode": 0,
+  "ResultDesc": "Accepted"
+}
+```
+
+The server also logged:
+
+```text
+Webhook received:
+{
+  "TransactionID": "TEST123",
+  "Amount": 100
+}
+
+
+This confirmed that a valid HMAC signature was accepted.
+
+### Final Verified Flow
+
+The completed experiment demonstrated:
+
+```text
+                 Incoming Request
+                        ↓
+                 Capture Raw Body
+                        ↓
+                  Read Signature
+                        ↓
+              Calculate HMAC-SHA256
+                        ↓
+               Compare Signatures
+                        ↓
+                 ┌──────┴──────┐
+                 ↓             ↓
+               MATCH       NO MATCH
+                 ↓             ↓
+             HTTP 200       HTTP 401
+              Accepted       Rejected
+
+
+
+### Learning Outcome
+
+This experiment taught me that webhook security is not simply about receiving a POST request and parsing JSON.
+
+I learned:
+
+1. A webhook receiver should have a way to verify the authenticity of incoming requests.
+2. HMAC allows the sender and receiver to independently calculate the same signature using a shared secret.
+3. The raw request body matters when calculating a body-based signature.
+4. A valid JSON request can still be rejected if its signature is missing or incorrect.
+5. Changing even one character in the shared secret or signed body changes the HMAC result.
+6. Node.js provides the `crypto` module natively, so an additional npm package was unnecessary for this prototype.
+7. Testing both the failure and success paths is essential.
+8. Git branches and pull requests provide a controlled way to implement, test, review, and merge a feature without directly modifying `main`.
