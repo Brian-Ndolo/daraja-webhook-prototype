@@ -406,8 +406,6 @@ Return acknowledgement
 
 Entry 5 — Webhook Verification Investigation
 
-
-
 Date: 19 August 2026
 
 Start time: 08:30 EAT
@@ -417,42 +415,23 @@ End time: 09:50 EAT
 Duration: 1hr 20 minutes
 
 
-
-
-
-
-
 Objective:
-
-
 
 Understand how a webhook receiver can determine whether an incoming request is legitimate.
 
-
-
 Investigation:
-
-
 
 I researched webhook signatures, shared secrets, HMAC, and timestamps.
 
 
-
 Learning:
 
-
-
 I learned that the sender and receiver can share a secret that is not exposed directly in the request. The sender uses the secret and request data to generate a signature. The receiver uses its own copy of the secret to independently calculate the expected signature and compares it with the received signature.
-
-
 
 I also learned that timestamps can be used to check whether a request is recent and help protect against replay attacks.
 
 
-
 Key realization:
-
-
 
 A webhook endpoint that accepts every POST request without verification cannot determine whether the request actually came from the expected sender.
 
