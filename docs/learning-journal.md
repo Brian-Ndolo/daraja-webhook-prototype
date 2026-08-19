@@ -441,9 +441,9 @@ Date: 19 August 2026
 
 Start time: 11: 30 am
 
-End time:  15: 00 PM
+End time:  unrecorded
 
-Duration: 3 hrs 30mins
+Duration: unrecorded
 
 ### Objective
 
