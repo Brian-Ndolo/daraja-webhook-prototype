@@ -4,16 +4,11 @@ Entry 1 — Initial Server Failure
 
 Date: 18 August 2026
 
-Start time: \[18:00]
+Start time: [18:00]
 
-End time: \[20:00]
+End time: [20:00]
 
-Duration: \[2hrs]
-
-
-
-
-
+Duration: [2hrs]
 
 
 Objective:
